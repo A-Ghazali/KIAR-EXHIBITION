@@ -25,6 +25,88 @@
       background-color: #120509;
     }
 
+    /* Overlay Preloader */
+    #app-loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100dvh;
+      background: #090d16;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      text-align: center;
+      transition: opacity 0.6s ease, visibility 0.6s ease;
+    }
+
+    #app-loader.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .loader-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+
+    .loader-subtitle {
+      font-size: 0.9rem;
+      color: #38bdf8;
+      margin-bottom: 24px;
+      font-weight: 600;
+    }
+
+    .progress-box {
+      width: 100%;
+      max-width: 280px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    #progress-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #0284c7, #38bdf8);
+      border-radius: 20px;
+      transition: width 0.2s ease;
+    }
+
+    #loader-status {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 24px;
+    }
+
+    .enter-btn {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #0f172a;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 25px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      display: none;
+    }
+
+    .enter-btn:active {
+      transform: scale(0.95);
+    }
+
     /* Particle Canvas Background */
     #particles-canvas {
       position: fixed;
@@ -53,6 +135,7 @@
       pointer-events: auto;
       background: rgba(30, 41, 59, 0.85);
       backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: #38bdf8;
       padding: 8px 16px;
@@ -121,7 +204,7 @@
       border-color: rgba(239, 68, 68, 0.3);
     }
 
-    /* 3D Pokémon Holo Card */
+    /* 3D Holo Card */
     .card-3d {
       position: relative;
       width: 100%;
@@ -136,9 +219,10 @@
       cursor: pointer;
       z-index: 1;
       transform-style: preserve-3d;
-      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease;
+      transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease;
       display: flex;
       flex-direction: column;
+      will-change: transform;
     }
 
     .card-3d img {
@@ -169,7 +253,7 @@
         transparent 90%
       );
       background-size: 300% 300%;
-      transition: opacity 0.4s ease, background-position 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+      transition: opacity 0.4s ease, background-position 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
     .card-glare {
@@ -331,20 +415,27 @@
 </head>
 <body>
 
+  <!-- App Preloader Overlay -->
+  <div id="app-loader">
+    <div class="loader-title">LOADING.....</div>
+    <div class="progress-box">
+      <div id="progress-fill"></div>
+    </div>
+    <div id="loader-status">Memuatkan aset... 0%</div>
+    <button class="enter-btn" id="enter-btn" onclick="startExperience()">
+      Mula
+    </button>
+  </div>
+
   <!-- Particle Background Canvas -->
   <canvas id="particles-canvas"></canvas>
 
   <!-- Top Controls -->
   <div class="top-bar">
     <a href="index.html" class="nav-btn">Utama</a>
-    <button class="nav-btn" id="soundBtn" onclick="toggleSound()">🔊 Bunyi: ON</button>
   </div>
 
   <div class="snap-container">
-
-    <!-- ========================================== -->
-    <!-- PART 1: KESEDARAN & UNDANG-UNDANG (1 - 5) -->
-    <!-- ========================================== -->
 
     <!-- Poster 1 -->
     <div class="section" data-type="info">
@@ -420,10 +511,6 @@
       </div>
       <div class="swipe-hint">⚠️Kes-Kes Rasuah yang terkenal di Malaysia ⬇️</div>
     </div>
-
-    <!-- ========================================== -->
-    <!-- PART 2: REAL MALAYSIA CASES (6 - 10)       -->
-    <!-- ========================================== -->
 
     <!-- Case 1 -->
     <div class="section" data-type="case">
@@ -535,6 +622,55 @@
 
   <script>
     // -------------------------------------------------------------
+    // 0. ASSET PRELOADER & INITIALIZATION ENGINE
+    // -------------------------------------------------------------
+    const assetList = [
+      'poster/poster1.png', 'poster/poster2.png', 'poster/poster3.png',
+      'poster/poster4.png', 'poster/poster5.png', 'case/case1.png',
+      'case/case2.png', 'case/case3.png', 'case/case4.png', 'case/case5.png'
+    ];
+
+    let loadedAssetsCount = 0;
+    const progressFill = document.getElementById('progress-fill');
+    const loaderStatus = document.getElementById('loader-status');
+    const enterBtn = document.getElementById('enter-btn');
+
+    assetList.forEach(src => {
+      const img = new Image();
+      img.src = src;
+      img.onload = img.onerror = () => {
+        loadedAssetsCount++;
+        const percent = Math.floor((loadedAssetsCount / assetList.length) * 100);
+        progressFill.style.width = percent + '%';
+        loaderStatus.innerText = `Memuatkan aset... ${percent}%`;
+
+        if (loadedAssetsCount === assetList.length) {
+          loaderStatus.innerText = "Semua aset sedia!";
+          enterBtn.style.display = "inline-block";
+        }
+      };
+    });
+
+    function startExperience() {
+      // 1. Initialize Web Audio API
+      if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      // 2. Request Gyroscope Permission (for iOS)
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().then(res => {
+          if (res === 'granted') {
+            window.addEventListener('deviceorientation', handleOrientation, true);
+          }
+        }).catch(() => {});
+      }
+
+      // 3. Play entry sound & Hide overlay
+      playCardSound();
+      document.getElementById('app-loader').classList.add('hidden');
+    }
+
+    // -------------------------------------------------------------
     // 1. DYNAMIC CANVAS PARTICLES & FIRE MORPH ENGINE
     // -------------------------------------------------------------
     const canvas = document.getElementById('particles-canvas');
@@ -611,15 +747,14 @@
     animateParticles();
 
     // -------------------------------------------------------------
-    // 2. AUDIO SYNTHESIZER
+    // 2. HIGH-VOLUME AUDIO SYNTHESIZER
     // -------------------------------------------------------------
-    let soundEnabled = true;
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
 
     function playCardSound() {
-      if (!soundEnabled) return;
       if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
 
       const bufferSize = audioCtx.sampleRate * 0.12; 
       const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -632,12 +767,12 @@
 
       const filter = audioCtx.createBiquadFilter();
       filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(800, audioCtx.currentTime);
-      filter.Q.setValueAtTime(1.5, audioCtx.currentTime);
+      filter.frequency.setValueAtTime(950, audioCtx.currentTime);
+      filter.Q.setValueAtTime(1.2, audioCtx.currentTime);
 
       const gain = audioCtx.createGain();
-      gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.2, audioCtx.currentTime + 0.03);
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.6, audioCtx.currentTime + 0.03);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
 
       whiteNoise.connect(filter);
@@ -645,11 +780,6 @@
       gain.connect(audioCtx.destination);
 
       whiteNoise.start();
-    }
-
-    function toggleSound() {
-      soundEnabled = !soundEnabled;
-      document.getElementById('soundBtn').innerText = soundEnabled ? "🔊 Bunyi: ON" : "🔇 Bunyi: OFF";
     }
 
     // -------------------------------------------------------------
@@ -679,34 +809,71 @@
     sections.forEach(section => observer.observe(section));
 
     // -------------------------------------------------------------
-    // 4. 3D HOLO TILT ENGINE
+    // 4. HYBRID 3D TILT ENGINE (Gyroscope + Touch/Mouse Fallback)
     // -------------------------------------------------------------
     const cards = document.querySelectorAll('.card-3d');
+    let activeCard = null;
 
-    cards.forEach(card => {
-      const glare = card.querySelector('.card-glare');
+    const cardObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          activeCard = entry.target.querySelector('.card-3d');
+        }
+      });
+    }, { threshold: 0.5 });
+
+    sections.forEach(sec => cardObserver.observe(sec));
+
+    function applyCardTilt(card, rotateX, rotateY) {
+      if (!card) return;
+
+      const limitX = Math.max(-20, Math.min(20, rotateX));
+      const limitY = Math.max(-20, Math.min(20, rotateY));
+
+      card.style.transform = `rotateX(${limitX}deg) rotateY(${limitY}deg) scale3d(1.03, 1.03, 1.03)`;
+
       const holo = card.querySelector('.holo-sheen');
+      const glare = card.querySelector('.card-glare');
 
+      if (holo) {
+        const posX = 50 + (limitY * 2);
+        const posY = 50 + (limitX * 2);
+        holo.style.opacity = '0.75';
+        holo.style.backgroundPosition = `${posX}% ${posY}%`;
+      }
+
+      if (glare) {
+        glare.style.opacity = '1';
+        glare.style.background = `radial-gradient(circle at ${50 + limitY}% ${50 + limitX}%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 80%)`;
+      }
+    }
+
+    function handleOrientation(event) {
+      if (!activeCard) return;
+
+      let tiltX = event.beta;  
+      let tiltY = event.gamma; 
+
+      if (tiltX === null || tiltY === null) return;
+
+      let rotateX = -(tiltX - 45) * 0.5;
+      let rotateY = tiltY * 0.5;
+
+      applyCardTilt(activeCard, rotateX, rotateY);
+    }
+
+    if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission !== 'function') {
+      window.addEventListener('deviceorientation', handleOrientation, true);
+    }
+
+    // Touch and Mouse Fallback
+    cards.forEach(card => {
       const handleMove = (x, y, rect) => {
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
-        
-        const rotateX = ((y - centerY) / (rect.height / 2)) * -14; 
+        const rotateX = ((y - centerY) / (rect.height / 2)) * -14;
         const rotateY = ((x - centerX) / (rect.width / 2)) * 14;
-
-        card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.04, 1.04, 1.04)`;
-        
-        if (holo) {
-          const posX = ((x - rect.left) / rect.width) * 100;
-          const posY = ((y - rect.top) / rect.height) * 100;
-          holo.style.opacity = '0.7';
-          holo.style.backgroundPosition = `${posX}% ${posY}%`;
-        }
-
-        if (glare) {
-          glare.style.opacity = '1';
-          glare.style.background = `radial-gradient(circle at ${((x - rect.left) / rect.width) * 100}% ${((y - rect.top) / rect.height) * 100}%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 80%)`;
-        }
+        applyCardTilt(card, rotateX, rotateY);
       };
 
       card.addEventListener('mousemove', (e) => {
@@ -724,6 +891,8 @@
 
       const reset = () => {
         card.style.transform = 'rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+        const holo = card.querySelector('.holo-sheen');
+        const glare = card.querySelector('.card-glare');
         if (holo) holo.style.opacity = '0';
         if (glare) glare.style.opacity = '0';
       };
