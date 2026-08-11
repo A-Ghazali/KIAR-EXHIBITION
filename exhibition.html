@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Galeri 3D - Pameran Digital Integriti</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #090d16;
+      color: #f8fafc;
+      overflow-x: hidden;
+      transition: background-color 0.8s ease;
+    }
+
+    /* Red Alert Background State for Real Cases */
+    body.case-mode {
+      background-color: #120509;
+    }
+
+    /* Particle Canvas Background */
+    #particles-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Top Controls */
+    .top-bar {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      right: 20px;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .nav-btn {
+      pointer-events: auto;
+      background: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #38bdf8;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      transition: all 0.3s ease;
+    }
+
+    body.case-mode .nav-btn {
+      border-color: rgba(248, 113, 113, 0.3);
+      color: #f87171;
+    }
+
+    /* Full-page Snap Container */
+    .snap-container {
+      position: relative;
+      z-index: 1;
+      height: 100vh;
+      height: 100dvh;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scroll-behavior: smooth;
+    }
+
+    .section {
+      height: 100vh;
+      height: 100dvh;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      position: relative;
+      perspective: 1000px;
+      text-align: center;
+    }
+
+    .section-tag {
+      position: absolute;
+      top: 20px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      z-index: 2;
+      transition: all 0.5s ease;
+    }
+
+    .section-tag.tag-case {
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    /* 3D Pokémon Holo Card */
+    .card-3d {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+      height: 60vh;
+      max-height: 520px;
+      background: #1e293b;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      cursor: pointer;
+      z-index: 1;
+      transform-style: preserve-3d;
+      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-3d img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+    }
+
+    .holo-sheen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0;
+      mix-blend-mode: color-dodge;
+      background: linear-gradient(
+        115deg,
+        transparent 20%,
+        rgba(255, 0, 0, 0.4) 30%,
+        rgba(255, 255, 0, 0.4) 40%,
+        rgba(0, 255, 0, 0.4) 50%,
+        rgba(0, 255, 255, 0.4) 60%,
+        rgba(0, 0, 255, 0.4) 70%,
+        rgba(255, 0, 255, 0.4) 80%,
+        transparent 90%
+      );
+      background-size: 300% 300%;
+      transition: opacity 0.4s ease, background-position 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .card-glare {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .card-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 16px;
+      background: linear-gradient(0deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0) 100%);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transform: translateZ(35px);
+      text-align: left;
+    }
+
+    .card-overlay h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+
+    .hint-btn {
+      font-size: 0.7rem;
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }
+
+    .hint-btn.btn-red {
+      background: #f87171;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    }
+
+    .engagement-bar {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 2;
+    }
+
+    .news-btn {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(248, 113, 113, 0.4);
+      color: #f87171;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(8px);
+      text-decoration: none;
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+    }
+
+    .news-btn:hover {
+      background: rgba(239, 68, 68, 0.3);
+      border-color: #ef4444;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+    }
+
+    .news-btn:active {
+      transform: scale(0.92);
+    }
+
+    .swipe-hint {
+      position: absolute;
+      bottom: 12px;
+      font-size: 0.75rem;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      animation: bounce 2s infinite;
+      z-index: 2;
+    }
+
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-8px); }
+      60% { transform: translateY(-4px); }
+    }
+
+    /* Fullscreen Modal */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100dvh;
+      background: rgba(9, 13, 22, 0.98);
+      backdrop-filter: blur(12px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 999;
+      padding: 10px;
+    }
+
+    .modal.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      max-width: 100%;
+      max-height: 95dvh;
+      object-fit: contain;
+      border-radius: 12px;
+      transform: scale(0.9);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .modal.active .modal-content {
+      transform: scale(1);
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 1.5rem;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.15);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Particle Background Canvas -->
+  <canvas id="particles-canvas"></canvas>
+
+  <!-- Top Controls -->
+  <div class="top-bar">
+    <a href="index.html" class="nav-btn">Utama</a>
+    <button class="nav-btn" id="soundBtn" onclick="toggleSound()">🔊 Bunyi: ON</button>
+  </div>
+
+  <div class="snap-container">
+
+    <!-- ========================================== -->
+    <!-- PART 1: KESEDARAN & UNDANG-UNDANG (1 - 5) -->
+    <!-- ========================================== -->
+
+    <!-- Poster 1 -->
+    <div class="section" data-type="info">
+      <div class="section-tag">01 / 10 • Pengenalan</div>
+      <div class="card-3d" onclick="openModal('poster/poster1.png')">
+        <div class="card-glare"></div>
+        <div class="holo-sheen"></div>
+        <img src="poster/poster1.png" alt="Poster 1" />
+        <div class="card-overlay">
+          <h2>Apa itu Rasuah?</h2>
+          <span class="hint-btn">Tekan Skrin!</span>
+        </div>
+      </div>
+      <div class="swipe-hint">Skrol ke bawah! ⬇️</div>
+    </div>
+
+    <!-- Poster 2 -->
+    <div class="section" data-type="info">
+      <div class="section-tag">02 / 10 • Menglaporkan</div>
+      <div class="card-3d" onclick="openModal('poster/poster2.png')">
+        <div class="card-glare"></div>
+        <div class="holo-sheen"></div>
+        <img src="poster/poster2.png" alt="Poster 2" />
+        <div class="card-overlay">
+          <h2>Mana nak lapor?</h2>
+          <span class="hint-btn">Tekan Skrin!</span>
+        </div>
+      </div>
+      <div class="swipe-hint">Skrol ke bawah! ⬇️</div>
+    </div>
+
+    <!-- Poster 3 -->
+    <div class="section" data-type="info">
+      <div class="section-tag">03 / 10 • Pelaburan KWAP</div>
+      <div class="card-3d" onclick="openModal('poster/poster3.png')">
+        <div class="card-glare"></div>
+        <div class="holo-sheen"></div>
+        <img src="poster/poster3.png" alt="Poster 3" />
+        <div class="card-overlay">
+          <h2>eFishery?</h2>
+          <span class="hint-btn">Tekan Skrin!</span>
+        </div>
+      </div>
+      <div class="swipe-hint">Skrol ke bawah! ⬇️</div>
+    </div>
+
+    <!-- Poster 4 -->
+    <div class="section" data-type="info">
+      <div class="section-tag">04 / 10 • Pekerjaan</div>
+      <div class="card-3d" onclick="openModal('poster/poster4.png')">
+        <div class="card-glare"></div>
+        <div class="holo-sheen"></div>
+        <img src="poster/poster4.png" alt="Poster 4" />
+        <div class="card-overlay">
+          <h2>Pekerjaan yang mana paling berisiko?</h2>
+          <span class="hint-btn">Tekan Skrin!</span>
+        </div>
+      </div>
+      <div class="swipe-hint">Skrol ke bawah! ⬇️</div>
+    </div>
+
+    <!-- Poster 5 -->
+    <div class="section" data-type="info">
+      <div class="section-tag">05 / 10 • Punca</div>
+      <div class="card-3d" onclick="openModal('poster/poster5.png')">
+        <div class="card-glare"></div>
+        <div class="holo-sheen"></div>
+        <img src="poster/poster5.png" alt="Poster 5" />
+        <div class="card-overlay">
+          <h2>Apa punca rasuah?</h2>
+          <span class="hint-btn">Tekan Skrin!</span>
+        </div>
+      </div>
+      <div class="swipe-hint">⚠️Kes-Kes Rasuah yang terkenal di Malaysia ⬇️</div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- PART 2: REAL MALAYSIA CASES (6 - 10)       -->
+    <!-- ========================================== -->
+
+    <!-- Case 1 -->
+    <div class="section" data-type="case">
+      <div class="section-tag tag-case">06 / 10 • Kes Realiti Malaysia</div>
+      <div class="card-3d" onclick="openModal('case/case1.png')">
+        <div class="card-glare"></div>
+        <div class="holo-sheen"></div>
+        <img src="case/case1.png" alt="Kes 1MDB" />
+        <div class="card-overlay">
+          <h2>Skandal 1MDB</h2>
+          <span class="hint-btn btn-red">🔍</span>
+        </div>
+      </div>
+      <div class="engagement-bar">
+        <a href="https://www.buletintv3.my/mahkamah/kes-1mdb-najib-diarah-bela-diri/" target="_blank" class="news-btn" onclick="playCardSound()">
+          📰 Baca Laporan Berita Rasmi ↗
+        </a>
+      </div>
+      <div class="swipe-hint">Tatal untuk kes seterusnya ↓</div>
+    </div>
+
+    <!-- Case 2 -->
+    <div class="section" data-type="case">
+      <div class="section-tag tag-case">07 / 10 • Kes Realiti Malaysia</div>
+      <div class="card-3d" onclick="openModal('case/case2.png')">
+        <div class="card-glare"></div>
+        <div class="holo-sheen"></div>
+        <img src="case/case2.png" alt="Skandal air Sabah" />
+        <div class="card-overlay">
+          <h2>Skandal air Sabah</h2>
+          <span class="hint-btn btn-red">🔍</span>
+        </div>
+      </div>
+      <div class="engagement-bar">
+        <a href="https://www.malaysiakini.com/news/358326" target="_blank" class="news-btn" onclick="playCardSound()">
+          📰 Baca Laporan Berita Rasmi ↗
+        </a>
+      </div>
+      <div class="swipe-hint">⬇️</div>
+    </div>
+
+    <!-- Case 3 -->
+    <div class="section" data-type="case">
+      <div class="section-tag tag-case">08 / 10 • Kes Realiti Malaysia</div>
+      <div class="card-3d" onclick="openModal('case/case3.png')">
+        <div class="card-glare"></div>
+        <div class="holo-sheen"></div>
+        <img src="case/case3.png" alt="Skandal Kapal Tempur Pesisir (LCS)" />
+        <div class="card-overlay">
+          <h2>Skandal Kapal Tempur Pesisir(LCS)</h2>
+          <span class="hint-btn btn-red">🔍</span>
+        </div>
+      </div>
+      <div class="engagement-bar">
+        <a href="https://malaysiagazette.com/2026/01/20/tubuh-rci-siasat-skandal-lcs-junjung-titah-agong-banteras-rasuah-izwan/" target="_blank" class="news-btn" onclick="playCardSound()">
+          📰 Baca Laporan Berita Rasmi ↗
+        </a>
+      </div>
+      <div class="swipe-hint">⬇️</div>
+    </div>
+
+    <!-- Case 4 -->
+    <div class="section" data-type="case">
+      <div class="section-tag tag-case">09 / 10 • Kes Realiti Malaysia</div>
+      <div class="card-3d" onclick="openModal('case/case4.png')">
+        <div class="card-glare"></div>
+        <div class="holo-sheen"></div>
+        <img src="case/case4.png" alt="Skandal rasuah pegawai tertinggi ATM" />
+        <div class="card-overlay">
+          <h2>Skandal rasuah pegawai tertinggi ATM </h2>
+          <span class="hint-btn btn-red">🔍</span>
+        </div>
+      </div>
+      <div class="engagement-bar">
+        <a href="https://www.bharian.com.my/berita/nasional/2026/01/1499874/kronologi-kes-skandal-rasuah-pegawai-tertinggi-atm" target="_blank" class="news-btn" onclick="playCardSound()">
+          📰 Baca Laporan Berita Rasmi ↗
+        </a>
+      </div>
+      <div class="swipe-hint">⬇️</div>
+    </div>
+
+    <!-- Case 5 -->
+    <div class="section" data-type="case">
+      <div class="section-tag tag-case">10 / 10 • Kes Realiti Malaysia</div>
+      <div class="card-3d" onclick="openModal('case/case5.png')">
+        <div class="card-glare"></div>
+        <div class="holo-sheen"></div>
+        <img src="case/case5.png" alt="Skandal Hartanah FELDA" />
+        <div class="card-overlay">
+          <h2>Skandal Hartanah FELDA</h2>
+          <span class="hint-btn btn-red">🔍</span>
+        </div>
+      </div>
+      <div class="engagement-bar">
+        <a href="https://www.astroawani.com/berita-malaysia/penjara-enam-tahun-denda-rm1545-juta-ini-kronologi-kes-rasuah-isa-samad-281086" target="_blank" class="news-btn" onclick="playCardSound()">
+          📰 Baca Laporan Berita Rasmi ↗
+        </a>
+      </div>
+      <div class="swipe-hint">Tamat Pameran, Terima Kasih kerana membaca.</div>
+    </div>
+
+  </div>
+
+  <!-- Fullscreen Modal -->
+  <div class="modal" id="imageModal" onclick="closeModal()">
+    <span class="close-btn">&times;</span>
+    <img class="modal-content" id="modalImg" alt="Full Poster" />
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // 1. DYNAMIC CANVAS PARTICLES & FIRE MORPH ENGINE
+    // -------------------------------------------------------------
+    const canvas = document.getElementById('particles-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let isCaseMode = false;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    class DynamicParticle {
+      constructor() { 
+        this.reset(true); 
+      }
+
+      reset(initial = false) {
+        this.x = Math.random() * canvas.width;
+        this.y = initial ? Math.random() * canvas.height : (isCaseMode ? canvas.height + 10 : Math.random() * canvas.height);
+        this.size = isCaseMode ? Math.random() * 3 + 1 : Math.random() * 2 + 0.5;
+        this.speedY = isCaseMode ? (Math.random() * -2 - 1) : (Math.random() * -0.5 - 0.2);
+        this.speedX = isCaseMode ? (Math.random() - 0.5) * 1.5 : 0;
+        this.opacity = Math.random() * 0.7 + 0.3;
+        this.fadeRate = isCaseMode ? Math.random() * 0.015 + 0.005 : 0;
+      }
+
+      update() {
+        this.y += this.speedY;
+        this.x += this.speedX;
+
+        if (isCaseMode) {
+          this.opacity -= this.fadeRate;
+        }
+
+        if (this.y < -10 || this.opacity <= 0) {
+          this.reset(false);
+        }
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+
+        if (isCaseMode) {
+          const isBrightSpark = Math.random() > 0.6;
+          ctx.fillStyle = isBrightSpark 
+            ? `rgba(255, 180, 50, ${this.opacity})`
+            : `rgba(239, 68, 68, ${this.opacity})`;
+          
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = '#ef4444';
+        } else {
+          ctx.fillStyle = `rgba(56, 189, 248, ${this.opacity})`;
+          ctx.shadowBlur = 0;
+        }
+
+        ctx.fill();
+      }
+    }
+
+    for (let i = 0; i < 60; i++) particles.push(new DynamicParticle());
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => { 
+        p.update(); 
+        p.draw(); 
+      });
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    // -------------------------------------------------------------
+    // 2. AUDIO SYNTHESIZER
+    // -------------------------------------------------------------
+    let soundEnabled = true;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function playCardSound() {
+      if (!soundEnabled) return;
+      if (!audioCtx) audioCtx = new AudioContext();
+
+      const bufferSize = audioCtx.sampleRate * 0.12; 
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const output = buffer.getChannelData(0);
+
+      for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1; 
+
+      const whiteNoise = audioCtx.createBufferSource();
+      whiteNoise.buffer = buffer;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+      filter.Q.setValueAtTime(1.5, audioCtx.currentTime);
+
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.2, audioCtx.currentTime + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+
+      whiteNoise.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      whiteNoise.start();
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('soundBtn').innerText = soundEnabled ? "🔊 Bunyi: ON" : "🔇 Bunyi: OFF";
+    }
+
+    // -------------------------------------------------------------
+    // 3. SCROLL SNAP OBSERVER & BACKGROUND THEME SHIFTER
+    // -------------------------------------------------------------
+    const sections = document.querySelectorAll('.section');
+    let isFirstLoad = true;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          if (!isFirstLoad) playCardSound();
+          else isFirstLoad = false;
+
+          const type = entry.target.getAttribute('data-type');
+          if (type === 'case') {
+            document.body.classList.add('case-mode');
+            isCaseMode = true;
+          } else {
+            document.body.classList.remove('case-mode');
+            isCaseMode = false;
+          }
+        }
+      });
+    }, { threshold: 0.6 });
+
+    sections.forEach(section => observer.observe(section));
+
+    // -------------------------------------------------------------
+    // 4. 3D HOLO TILT ENGINE
+    // -------------------------------------------------------------
+    const cards = document.querySelectorAll('.card-3d');
+
+    cards.forEach(card => {
+      const glare = card.querySelector('.card-glare');
+      const holo = card.querySelector('.holo-sheen');
+
+      const handleMove = (x, y, rect) => {
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        
+        const rotateX = ((y - centerY) / (rect.height / 2)) * -14; 
+        const rotateY = ((x - centerX) / (rect.width / 2)) * 14;
+
+        card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.04, 1.04, 1.04)`;
+        
+        if (holo) {
+          const posX = ((x - rect.left) / rect.width) * 100;
+          const posY = ((y - rect.top) / rect.height) * 100;
+          holo.style.opacity = '0.7';
+          holo.style.backgroundPosition = `${posX}% ${posY}%`;
+        }
+
+        if (glare) {
+          glare.style.opacity = '1';
+          glare.style.background = `radial-gradient(circle at ${((x - rect.left) / rect.width) * 100}% ${((y - rect.top) / rect.height) * 100}%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 80%)`;
+        }
+      };
+
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        handleMove(e.clientX, e.clientY, rect);
+      });
+
+      card.addEventListener('touchmove', (e) => {
+        if (e.touches.length > 0) {
+          const touch = e.touches[0];
+          const rect = card.getBoundingClientRect();
+          handleMove(touch.clientX, touch.clientY, rect);
+        }
+      });
+
+      const reset = () => {
+        card.style.transform = 'rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+        if (holo) holo.style.opacity = '0';
+        if (glare) glare.style.opacity = '0';
+      };
+
+      card.addEventListener('mouseleave', reset);
+      card.addEventListener('touchend', reset);
+    });
+
+    // -------------------------------------------------------------
+    // 5. FULLSCREEN MODAL
+    // -------------------------------------------------------------
+    function openModal(imgSrc) {
+      playCardSound();
+      const modal = document.getElementById('imageModal');
+      const modalImg = document.getElementById('modalImg');
+      modalImg.src = imgSrc;
+      modal.classList.add('active');
+    }
+
+    function closeModal() {
+      playCardSound();
+      const modal = document.getElementById('imageModal');
+      modal.classList.remove('active');
+    }
+  </script>
+</body>
+</html>
